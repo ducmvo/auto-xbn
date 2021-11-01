@@ -1,6 +1,6 @@
 import Web3 from 'web3';
-import ethers from 'ethers';
-import delay from 'delay';
+import countDown from './timer.js';
+import timer from 'timers/promises';
 import fs from 'fs';
 import { bsc } from './axios.js';
 import { wallets } from './wallets.js';
@@ -104,8 +104,9 @@ export default async (
 				throw new Error(
 					'Something went wrong, Reward avaiable but unable to claim'
 				);
-
-			await delay(nextDuration + 10000);
+			countDown(nextDuration + 9000);
+			await timer.setTimeout(duration + 10000);
+			// await delay(nextDuration + 10000);
 		}
 	}
 };
@@ -159,20 +160,13 @@ export const displayRewardStats = async (
 	reward = await contract.methods[getReward](address).call();
 	reward = parseFloat(web3.utils.fromWei(reward, 'ether'));
 	if (!isStake) {
-		let amount;
 		if (reward > 300) {
-			amount = reward / 6; // 300 XBN , claim 17%
-		} else {
-			amount = reward / 3; // claim 33%
-		}
-
-		if (reward < 30) {
-			amount = reward / 2; // claim 50%
-		}
-		if (reward < 10) {
-			amount = reward; // claim 100%
-		}
-		reward = amount;
+			reward /= 6; // 300 XBN , claim 17%
+		} else if (reward > 30) {
+			reward /= 3; // claim 33%
+		} else if (reward > 10) {
+			reward /= 2; // claim 50%
+		}  // reward <= 10 claim 100%
 	}
 
 	nextClaimTime = await contract.methods[getTime](address).call();
@@ -186,8 +180,8 @@ export const displayRewardStats = async (
 	);
 	const date = new Date();
 	date.setTime(parseInt(nextClaimTime) * 1000);
-	const diffTime = Math.abs(new Date() - date);
-	const days = diffTime / (24 * 60 * 60 * 1000);
+	const duration = Math.abs(new Date() - date);
+	const days = duration / (24 * 60 * 60 * 1000);
 	const hours = (days % 1) * 24;
 	const mins = (hours % 1) * 60;
 
@@ -197,8 +191,10 @@ export const displayRewardStats = async (
 				mins - (mins % 1)
 			} mins left to claim reward!`
 		);
-	} else {
+	} else if (reward !== 0) {
 		console.log('Reward is READY to be claimed!!');
+	} else {
+		console.log('No reward balance on this address');
 	}
 
 	return reward;
