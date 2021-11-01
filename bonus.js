@@ -1,9 +1,9 @@
 import claimBonus from './index.js';
 
-const proxyAddress = '0x1CA3a59a426E4f735548fCa84132CF69E7FD7e94';
-const contractAddress = '0x77C6BB15eac53C710964b19911A59DA473412847';
+const proxyAddress = process.env.BONUS_PROXY_ADDRESS;
+const contractAddress = process.env.BONUS_CONTRACT_ADDRESS;
 
-claimBonus(
+export const params = [
 	contractAddress,
 	proxyAddress,
 	{
@@ -18,4 +18,11 @@ claimBonus(
 		ABI_FILE: './logs/migration-abi.txt'
 	},
 	false // not staking
-);
+];
+
+const claimReward = (params) => {
+	const [contractAddress, proxyAddress, methods, files, isStake] = params;
+	claimBonus(contractAddress, proxyAddress, methods, files, isStake);
+};
+
+claimReward(params);

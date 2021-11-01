@@ -1,9 +1,9 @@
-import stake from './index.js';
+import stakeReward from './index.js';
 
-const proxyAddress = '0x18932c68f664ac348aed3c0b07e2ad2124d0f32c';
-const contractAddress = '0x8AB58dd7aC92Ee5088a34556bED11Be7B74B2ab0';
+const proxyAddress = process.env.STAKING_PROXY_ADDRESS;
+const contractAddress = process.env.STAKING_CONTRACT_ADDRESS;
 
-stake(
+export const params = [
 	contractAddress,
 	proxyAddress,
 	{
@@ -16,5 +16,13 @@ stake(
 		RECEIPT_LOG_FILE: './logs/receipts.txt',
 		TX_LOG_FILE: './logs/transactions.txt',
 		ABI_FILE: './logs/abi.txt'
-	}
-);
+	},
+	true
+];
+
+const staking = (params) => {
+	const [contractAddress, proxyAddress, methods, files, isStake] = params;
+	stakeReward(contractAddress, proxyAddress, methods, files, isStake);
+};
+
+staking(params);
