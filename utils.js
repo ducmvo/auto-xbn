@@ -58,8 +58,7 @@ export const displayRewardStats = async (
 
 	display && console.log('CALCULATED REWARD: ', reward);
 	if (!isStake) {
-		reward = getClaimable(reward);
-		display && console.log('CLAIMABLE: ', reward);
+		display && console.log('CLAIMABLE: ', getClaimable(reward));
 	}
 	display &&
 		console.log(

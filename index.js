@@ -127,7 +127,7 @@ export default async (
 
 			console.log('\nWaiting until next claim...\n');
 			console.log('ADDRESS: ', nextAddress);
-			console.log('REWARD: ', nextReward);
+			console.log('REWARD: ', isStake && nextReward || getClaimable(nextReward));
 			countDown(nextDuration + 9000);
 			await timer.setTimeout(nextDuration + 10000);
 		}
