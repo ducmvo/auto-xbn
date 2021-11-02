@@ -20,9 +20,9 @@ export const params = [
 	false // not staking
 ];
 
-const claimReward = (params) => {
+const claimReward = async (params) => {
 	const [contractAddress, proxyAddress, methods, files, isStake] = params;
-	claimBonus(contractAddress, proxyAddress, methods, files, isStake);
+	await claimBonus(contractAddress, proxyAddress, methods, files, isStake);
 };
 
-claimReward(params);
+await claimReward(params);

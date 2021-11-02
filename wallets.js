@@ -6,7 +6,8 @@ const mnemonicPhrases = [
 	process.env.PHRASES_6572,
 	process.env.PHRASES_F95,
 	process.env.PHRASES_F39E,
-	process.env.PHRASES_CDB2
+	process.env.PHRASES_CDB2,
+	process.env.PHRASES_73D7
 ];
 
 export const wallets = mnemonicPhrases.map((phrase) =>

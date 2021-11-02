@@ -1,21 +1,23 @@
 {
-  "name": "auto-xbn",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node index.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "axios": "^0.24.0",
-    "delay": "^5.0.0",
-    "dotenv": "^10.0.0",
-    "ethers": "^5.5.1",
-    "web3": "^1.6.0"
-  }
+	"name": "auto-xbn",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"type": "module",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"dev": "node index.js",
+		"stake": "node staking.js",
+		"bonus": "node bonus.js"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"axios": "^0.24.0",
+		"delay": "^5.0.0",
+		"dotenv": "^10.0.0",
+		"ethers": "^5.5.1",
+		"web3": "^1.6.0"
+	}
 }

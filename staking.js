@@ -20,9 +20,9 @@ export const params = [
 	true
 ];
 
-const staking = (params) => {
+const staking = async (params) => {
 	const [contractAddress, proxyAddress, methods, files, isStake] = params;
-	stakeReward(contractAddress, proxyAddress, methods, files, isStake);
+	await stakeReward(contractAddress, proxyAddress, methods, files, isStake);
 };
 
-staking(params);
+await staking(params);

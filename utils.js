@@ -37,57 +37,66 @@ export const displayRewardStats = async (
 	contract,
 	address,
 	methods,
-	isStake = true
+	isStake = true,
+	display = true
 ) => {
-	let reward, nextClaimTime, claimDate;
 	const { getReward, getTime } = methods;
-	console.log('\n===========================');
-	console.log(
-		'ADDRESS: ',
-		address.substr(address.length - 4, address.length)
-	);
+	let reward, nextClaimTime, claimDate, duration, days, hours, mins;
+	display && console.log('\n===========================');
+	display &&
+		console.log(
+			'%s\x1b[30m\x1b[43m%s\x1b[0m',
+			'ADDRESS: ',
+			address.substr(address.length - 4, address.length).toUpperCase()
+		);
 
 	reward = await contract.methods[getReward](address).call();
 	reward = parseFloat(web3.utils.fromWei(reward, 'ether'));
-	if (!isStake) {
-		if (reward > 300) {
-			reward /= 6; // 300 XBN , claim 17%
-		} else if (reward > 30) {
-			reward /= 3; // claim 33%
-		} else if (reward > 10) {
-			reward /= 2; // claim 50%
-		} // reward <= 10 claim 100%
-	}
 
 	nextClaimTime = await contract.methods[getTime](address).call();
 	claimDate = new Date(parseInt(nextClaimTime) * 1000);
 
-	console.log('calculateReward: ', reward);
-	console.log(
-		'getNextClaimTime: ',
-		claimDate.toLocaleDateString(),
-		claimDate.toLocaleTimeString()
-	);
-	const date = new Date();
-	date.setTime(parseInt(nextClaimTime) * 1000);
-	const duration = Math.abs(new Date() - date);
-	const days = duration / (24 * 60 * 60 * 1000);
-	const hours = (days % 1) * 24;
-	const mins = (hours % 1) * 60;
-
-	if (date - new Date() > 0) {
-		console.log(
-			`${days - (days % 1)} days, ${hours - (hours % 1)} hours, ${
-				mins - (mins % 1)
-			} mins left to claim reward!`
-		);
-	} else if (reward !== 0) {
-		console.log('Reward is READY to be claimed!!');
-	} else {
-		console.log('No reward balance on this address');
+	display && console.log('CALCULATED REWARD: ', reward);
+	if (!isStake) {
+		reward = getClaimable(reward);
+		display && console.log('CLAIMABLE: ', reward);
 	}
+	display &&
+		console.log(
+			'NEXT CLAIM TIME: ',
+			claimDate.toLocaleDateString(),
+			claimDate.toLocaleTimeString()
+		);
+	duration = claimDate - new Date();
 
+	if (duration > 0) {
+		days = duration / (24 * 60 * 60 * 1000);
+		hours = (days % 1) * 24;
+		mins = (hours % 1) * 60;
+		display &&
+			console.log(
+				`${days - (days % 1)} days, ${hours - (hours % 1)} hours, ${
+					mins - (mins % 1)
+				} mins left to claim reward!`
+			);
+	} else if (reward !== 0) {
+		display && console.log('Reward is READY to be claimed!!');
+	} else {
+		display && console.log('No reward balance on this address');
+	}
 	return reward;
+};
+
+export const getClaimable = (reward) => {
+	if (reward > 300) {
+		return reward / 6; // 300 XBN , claim 17%
+	} else if (reward > 30) {
+		return reward / 3; // claim 33%
+	} else if (reward > 10) {
+		return reward / 2; // claim 50%
+	} else {
+		return reward; // reward <= 10 claim 100%
+	}
 };
 
 export const claimReward = async (
@@ -97,24 +106,25 @@ export const claimReward = async (
 	address,
 	privateKey,
 	methods,
-	files
+	files,
+	isStake
 ) => {
 	const { claim } = methods;
 	const { RECEIPT_LOG_FILE, TX_LOG_FILE } = files;
 	const encodedABI = await contract.methods[claim]().encodeABI();
 	let tx, signedTx, receipt;
-
 	tx = {
 		from: address,
 		to: contractAddress,
-		gas: 500000,
-		value: web3.utils.toWei('0.003', 'ether'),
-		data: encodedABI
+		data: encodedABI,
+		gas: 370000
 	};
-	// signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
-	// receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-	signedTx = tx;
-	receipt = tx;
+	if (isStake) {
+		tx = { ...tx, gas: 500000, value: web3.utils.toWei('0.003', 'ether') };
+	}
+	signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
+	receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 	fs.appendFileSync(TX_LOG_FILE, JSON.stringify(signedTx) + '\n');
 	fs.appendFileSync(RECEIPT_LOG_FILE, JSON.stringify(receipt) + '\n');
+	return receipt;
 };
