@@ -48,11 +48,19 @@ const getTotalBalance = async (addresses, symbolID, isUp) => {
 			new Date(time).toLocaleDateString()
 	);
 
-	console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-	console.log("%s\x1b[34m\x1b[1m%s\x1b[0m", 'BALANCE: ', balance);
-	console.log(`%s\x1b[${isUp&&32||31}m\x1b[1m%s\x1b[0m`, 'PRICE: ', price);
-	console.log("%s\x1b[34m\x1b[1m%s\x1b[0m", 'USD: ', price * balance);
-	console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+	console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+	console.log('%s\x1b[37m\x1b[1m%s\x1b[0m', 'BALANCE: ', balance.toFixed(0));
+	console.log(
+		`%s\x1b[${(isUp && 32) || 31}m\x1b[1m%s\x1b[0m`,
+		'PRICE: ',
+		price
+	);
+	console.log(
+		'%s\x1b[37m\x1b[1m%s\x1b[0m',
+		'USD: ',
+		(price * balance).toFixed(2)
+	);
+	console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
 	return { price, balance, time };
 };
 
@@ -60,13 +68,15 @@ const main = async () => {
 	const addresses = wallets.map((wallet) => wallet.address);
 	const symbolID = 9385; //XBN
 	const ACCOUNT_DATA_FILE = './logs/accounts-data.txt';
-	let price, balance, time, chunk;
-	let prevPrice;
-	let isUp = false;
+
+	let prevPrice, isUp, chunk;
 	while (true) {
-		price, balance, time = await getTotalBalance(addresses, symbolID, isUp);
-		if (prevPrice && price > prevPrice ) isUp = true;
-		else isUp = false;
+		const { price, balance, time } = await getTotalBalance(
+			addresses,
+			symbolID,
+			isUp
+		);
+		isUp = prevPrice && price >= prevPrice;
 		chunk = {
 			price: price,
 			balance: balance,

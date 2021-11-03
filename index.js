@@ -25,7 +25,7 @@ export default async (
 	const contractABI = await fetchABI(proxyAddress, { ABI_FILE });
 	const contract = new web3.eth.Contract(contractABI, contractAddress);
 	// const DAY_TO_MS = 24 * 60 * 60 * 1000;
-	let address, privateKey, prevAddress, nextAddress, nextPrivateKey;
+	let address, privateKey, nextAddress, nextPrivateKey;
 	let reward, nextReward, totalReward, totalClaimableReward;
 	let balance, totalBalance;
 	let nextDuration = Infinity;
@@ -75,13 +75,12 @@ export default async (
 			}
 		}
 
-		console.log("\x1b[32m\x1b[1m%s%s\x1b[0m", 'BALANCE: ', totalBalance);
-
-		if (prevAddress && prevAddress === nextAddress)
-			throw new Error(`CANNOT CLAIM TWICE FOR ADDRESS: ${nextAddress}`);
+		console.log('\x1b[32m\x1b[1m%s%s\x1b[0m', 'BALANCE: ', totalBalance);
 
 		if (!nextReward || nextReward < 0)
-			throw Error('Something went wront! Reward cannot be less than 0');
+			throw new Error(
+				'Something went wront! Reward cannot be less than 0'
+			);
 		if (nextReward === 0) {
 			console.log('NO MORE REWARD TO CLAIM!');
 			return; // No more reward to claim
@@ -90,8 +89,11 @@ export default async (
 		if (nextDuration <= 0) {
 			// Claim reward
 			console.log('\nCreating and sending transaction, please wait...\n');
-			console.log('ADDRESS: ', nextAddress);
-			console.log('REWARD: ', nextReward);
+			console.log(`ADDRESS: ...${nextAddress.substr(38, 42)}`);
+			console.log(
+				'REWARD: ',
+				(isStake && nextReward) || getClaimable(nextReward)
+			);
 			// Keep reward < 2/3 rewardThreshold
 
 			receipt = await claimReward(
@@ -109,15 +111,17 @@ export default async (
 			// tax = 10% reward
 			// if tax < 1 => no tax
 			console.log(
-				'\x1b[34m%s\x1b[0m',
-				`\n${parseFloat(nextReward * 0.9).toFixed(
-					4
-				)} TAXED REWARD CLAIMED!!\n`
+				'\x1b[1m\x1b[32m%s\x1b[0m',
+				`\n${parseFloat(
+					(isStake && nextReward) || getClaimable(nextReward) * 0.9
+				).toFixed(4)} TAXED REWARD CLAIMED!!\n`
 			);
 			console.log('TRANSACTION RECEIPT', {
-				transactionHash: receipt.transactionHash,
+				txnHash: `https://bscscan.com/tx/${receipt.transactionHash}`,
 				status: receipt.status
 			});
+
+			if (!receipt.status) throw new Error('TRANSACTION FAILED!!');
 
 			console.log('\nPlease wait for updating...\n');
 			await timer.setTimeout(10000);
@@ -164,7 +168,5 @@ export default async (
 			countDown(nextDuration);
 			await timer.setTimeout(nextDuration + 10000);
 		}
-
-		prevAddress = nextAddress;
 	}
 };
