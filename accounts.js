@@ -37,7 +37,7 @@ const getPrice = async (symbolID) => {
 	return data;
 };
 
-const getTotalBalance = async (addresses, symbolID) => {
+const getTotalBalance = async (addresses, symbolID, isUp) => {
 	console.log('\n\n==================================');
 	const { price, contract, time } = await getPrice(symbolID);
 	const balance = await getTokenBalance(addresses, contract);
@@ -48,9 +48,11 @@ const getTotalBalance = async (addresses, symbolID) => {
 			new Date(time).toLocaleDateString()
 	);
 
-	console.log('TOTAL: ', balance);
-	console.log('PRICE: ', price);
-	console.log('USD: ', price * balance);
+	console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+	console.log("%s\x1b[34m\x1b[1m%s\x1b[0m", 'BALANCE: ', balance);
+	console.log(`%s\x1b[${isUp&&32||31}m\x1b[1m%s\x1b[0m`, 'PRICE: ', price);
+	console.log("%s\x1b[34m\x1b[1m%s\x1b[0m", 'USD: ', price * balance);
+	console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
 	return { price, balance, time };
 };
 
@@ -59,14 +61,19 @@ const main = async () => {
 	const symbolID = 9385; //XBN
 	const ACCOUNT_DATA_FILE = './logs/accounts-data.txt';
 	let price, balance, time, chunk;
+	let prevPrice;
+	let isUp = false;
 	while (true) {
-		price, balance, time = await getTotalBalance(addresses, symbolID);
+		price, balance, time = await getTotalBalance(addresses, symbolID, isUp);
+		if (prevPrice && price > prevPrice ) isUp = true;
+		else isUp = false;
 		chunk = {
 			price: price,
 			balance: balance,
 			time: time
 		};
 		fs.appendFileSync(ACCOUNT_DATA_FILE, JSON.stringify(chunk));
+		prevPrice = price;
 		await delay(5 * 60 * 1000);
 	}
 };

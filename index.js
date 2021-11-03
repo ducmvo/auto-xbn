@@ -7,7 +7,8 @@ import {
 	fetchABI,
 	displayRewardStats,
 	claimReward,
-	getClaimable
+	getClaimable,
+	getBalance
 } from './utils.js';
 
 export default async (
@@ -23,55 +24,75 @@ export default async (
 	const web3 = new Web3(process.env.PROVIDER);
 	const contractABI = await fetchABI(proxyAddress, { ABI_FILE });
 	const contract = new web3.eth.Contract(contractABI, contractAddress);
-	const DAY_TO_MS = 24 * 60 * 60 * 1000;
+	// const DAY_TO_MS = 24 * 60 * 60 * 1000;
 	let address, privateKey, prevAddress, nextAddress, nextPrivateKey;
 	let reward, nextReward, totalReward, totalClaimableReward;
+	let balance, totalBalance;
 	let nextDuration = Infinity;
 	let time, duration;
 	let receipt;
 
 	while (true) {
 		nextDuration = Infinity;
-		console.log('==========================');
+		balance = 0;
+		totalBalance = 0;
+		console.log('==================================\n');
 		for (let wallet of wallets) {
 			privateKey = wallet.privateKey;
 			address = wallet.address;
 			time = await getNextClaimTime(contract, address, { nextClaimTime });
 			duration = new Date().setTime(time) - new Date();
+			balance = await getBalance(
+				web3,
+				address,
+				process.env.XBN_CONTRACT_ADDRESS
+			);
+			totalBalance += parseFloat(balance);
 			console.log(
+				'%s\x1b[34m %s\x1b[0m \x1b[33m%s\x1b[0m',
 				'ADDRESS: ',
-				address.substr(address.length - 4, address.length),
-				duration
+				address.substr(38, 42).toUpperCase(),
+				balance
+			);
+			reward = await displayRewardStats(
+				web3,
+				contract,
+				address,
+				{
+					getReward,
+					getTime
+				},
+				isStake,
+				false
 			);
 
-			if (duration < nextDuration && duration > -DAY_TO_MS * 7) {
+			if (reward !== 0 && duration < nextDuration) {
+				//&& duration > -DAY_TO_MS * 7
 				nextDuration = duration;
 				nextAddress = address;
 				nextPrivateKey = privateKey;
-				nextReward = await displayRewardStats(
-					web3,
-					contract,
-					nextAddress,
-					{
-						getReward,
-						getTime
-					},
-					isStake,
-					false
-				);
+				nextReward = reward;
 			}
 		}
 
-		if (nextReward !== 0 && nextDuration <= 0) {
-			// claimable within 7 days
-			if (nextAddress && prevAddress === nextAddress)
-				throw new Error(
-					`CANNOT CLAIM TWICE FOR ADDRESS: ${nextAddress}`
-				);
+		console.log("\x1b[32m\x1b[1m%s%s\x1b[0m", 'BALANCE: ', totalBalance);
 
+		if (prevAddress && prevAddress === nextAddress)
+			throw new Error(`CANNOT CLAIM TWICE FOR ADDRESS: ${nextAddress}`);
+
+		if (!nextReward || nextReward < 0)
+			throw Error('Something went wront! Reward cannot be less than 0');
+		if (nextReward === 0) {
+			console.log('NO MORE REWARD TO CLAIM!');
+			return; // No more reward to claim
+		}
+		// reward > 0
+		if (nextDuration <= 0) {
+			// Claim reward
 			console.log('\nCreating and sending transaction, please wait...\n');
 			console.log('ADDRESS: ', nextAddress);
 			console.log('REWARD: ', nextReward);
+			// Keep reward < 2/3 rewardThreshold
 
 			receipt = await claimReward(
 				web3,
@@ -85,19 +106,23 @@ export default async (
 			);
 
 			await timer.setTimeout(3000);
-
+			// tax = 10% reward
+			// if tax < 1 => no tax
 			console.log(
 				'\x1b[34m%s\x1b[0m',
-				`Congrats!! You have successfully claimed ${parseFloat(
-					nextReward
-				).toFixed(2)} REWARD!!!`
+				`\n${parseFloat(nextReward * 0.9).toFixed(
+					4
+				)} TAXED REWARD CLAIMED!!\n`
 			);
-			console.log('RECEIPT', receipt);
-			prevAddress = nextAddress;
+			console.log('TRANSACTION RECEIPT', {
+				transactionHash: receipt.transactionHash,
+				status: receipt.status
+			});
 
 			console.log('\nPlease wait for updating...\n');
 			await timer.setTimeout(10000);
 		} else {
+			// Set Timer to next reward
 			totalReward = 0;
 			totalClaimableReward = 0;
 			for (let wallet of wallets) {
@@ -118,18 +143,28 @@ export default async (
 					totalClaimableReward += getClaimable(reward);
 				}
 			}
-			console.log('\n\x1b[34m%s\x1b[32m', 'TOTAL REWARD: ', totalReward);
 			console.log(
-				'\x1b[34m%s\x1b[32m',
+				'\n\x1b[1m%s\x1b[0m\x1b[32m\x1b[1m%s\x1b[0m',
+				'TOTAL REWARD: ',
+				totalReward
+			);
+			console.log(
+				'\x1b[1m%s\x1b[0m\x1b[32m\x1b[1m%s\x1b[0m',
 				'TOTAL CLAIMABLE: ',
-				(!isStake && totalClaimableReward) || totalReward
+				(!isStake && totalClaimableReward) || totalReward * 0.9
 			);
 
 			console.log('\nWaiting until next claim...\n');
-			console.log('ADDRESS: ', nextAddress);
-			console.log('REWARD: ', isStake && nextReward || getClaimable(nextReward));
-			countDown(nextDuration + 9000);
+			console.log(`ADDRESS: ...${nextAddress.substr(38, 42)}`);
+			console.log(
+				'REWARD: ',
+				(isStake && nextReward) || getClaimable(nextReward)
+			);
+
+			countDown(nextDuration);
 			await timer.setTimeout(nextDuration + 10000);
 		}
+
+		prevAddress = nextAddress;
 	}
 };

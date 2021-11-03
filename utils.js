@@ -7,6 +7,11 @@ export const getNextClaimTime = async (contract, address, methods) => {
 	return parseInt(duration) * 1000;
 };
 
+export const getNextReward = async (contract, address, methods) => {
+	const { getReward } = methods;
+	return await contract.methods[getReward](address).call();
+};
+
 export const fetchABI = async (address, files) => {
 	const { ABI_FILE } = files;
 	let abi, data;
@@ -41,49 +46,62 @@ export const displayRewardStats = async (
 	display = true
 ) => {
 	const { getReward, getTime } = methods;
-	let reward, nextClaimTime, claimDate, duration, days, hours, mins;
-	display && console.log('\n===========================');
-	display &&
-		console.log(
-			'%s\x1b[30m\x1b[43m%s\x1b[0m',
-			'ADDRESS: ',
-			address.substr(address.length - 4, address.length).toUpperCase()
-		);
-
-	reward = await contract.methods[getReward](address).call();
+	let nextClaimTime, claimDate, duration;
+	let reward = await getNextReward(contract, address, {
+		getReward: getReward
+	});
 	reward = parseFloat(web3.utils.fromWei(reward, 'ether'));
 
-	nextClaimTime = await contract.methods[getTime](address).call();
-	claimDate = new Date(parseInt(nextClaimTime) * 1000);
+	if (!display) return reward;
 
-	display && console.log('CALCULATED REWARD: ', reward);
-	if (!isStake) {
-		display && console.log('CLAIMABLE: ', getClaimable(reward));
-	}
-	display &&
+	console.log('\n===========================');
+	console.log(
+		'%s\x1b[34m%s\x1b[0m',
+		'ADDRESS: ',
+		address.substr(address.length - 4, address.length).toUpperCase()
+	);
+
+	console.log('CALCULATED REWARD: ', reward);
+	!isStake && console.log('CLAIMABLE: ', getClaimable(reward));
+
+	if (reward !== 0) {
+		nextClaimTime = await getNextClaimTime(contract, address, {
+			nextClaimTime: getTime
+		});
+		duration = new Date().setTime(nextClaimTime) - new Date();
+		claimDate = new Date(nextClaimTime);
+
 		console.log(
 			'NEXT CLAIM TIME: ',
 			claimDate.toLocaleDateString(),
 			claimDate.toLocaleTimeString()
 		);
-	duration = claimDate - new Date();
-
-	if (duration > 0) {
-		days = duration / (24 * 60 * 60 * 1000);
-		hours = (days % 1) * 24;
-		mins = (hours % 1) * 60;
-		display &&
-			console.log(
-				`${days - (days % 1)} days, ${hours - (hours % 1)} hours, ${
-					mins - (mins % 1)
-				} mins left to claim reward!`
-			);
-	} else if (reward !== 0) {
-		display && console.log('Reward is READY to be claimed!!');
+		const dr = displayDuration(duration);
+		duration > 0
+			? console.log(`REWARD READY IN: ${dr}`)
+			: console.log('REWARD IS READY!!!');
 	} else {
-		display && console.log('No reward balance on this address');
+		console.log('NO REWARD IN THIS ADDRESS.');
 	}
+
 	return reward;
+};
+
+export const displayDuration = (milliseconds) => {
+	let days = milliseconds / (24 * 60 * 60 * 1000);
+	let hours = (days % 1) * 24;
+	let mins = (hours % 1) * 60;
+	let secs = (mins % 1) * 60;
+	days -= days % 1;
+	hours -= hours % 1;
+	mins -= mins % 1;
+	secs -= secs % 1;
+	return (
+		((days && `${days} days, `) || '') +
+		((hours && `${hours} hours, `) || '') +
+		((mins && `${mins} mins, `) || '') +
+		((secs && `${secs} secs.`) || '')
+	);
 };
 
 export const getClaimable = (reward) => {
@@ -126,4 +144,17 @@ export const claimReward = async (
 	fs.appendFileSync(TX_LOG_FILE, JSON.stringify(signedTx) + '\n');
 	fs.appendFileSync(RECEIPT_LOG_FILE, JSON.stringify(receipt) + '\n');
 	return receipt;
+};
+
+export const getBalance = async (web3, address, contractAddress) => {
+	const url =
+		`&module=account` +
+		`&action=tokenbalance` +
+		`&contractaddress=${contractAddress}` +
+		`&address=${address}` +
+		`&tag=latest`;
+
+	const data = await bsc.get(url);
+	const result = web3.utils.fromWei(data.result, 'ether');
+	return result;
 };
