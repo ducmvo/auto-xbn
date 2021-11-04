@@ -3,6 +3,7 @@ import delay from 'delay';
 import fs from 'fs';
 import { cmc, bsc } from './axios.js';
 import { wallets } from './wallets.js';
+import notify from './notification.js';
 
 const getURL = (address, contract) => {
 	const url =
@@ -69,7 +70,7 @@ const main = async () => {
 	const symbolID = 9385; //XBN
 	const ACCOUNT_DATA_FILE = './logs/accounts-data.txt';
 
-	let prevPrice, isUp, chunk;
+	let prevPrice, isUp, chunk, change;
 	while (true) {
 		const { price, balance, time } = await getTotalBalance(
 			addresses,
@@ -77,6 +78,11 @@ const main = async () => {
 			isUp
 		);
 		isUp = prevPrice && price >= prevPrice;
+		change = (100 * (price - prevPrice)) / prevPrice;
+		// if (prevPrice && Math.abs(change) >= 10) {
+		// 	notify(price, change);
+		// }
+		if (prevPrice) notify(price, change);
 		chunk = {
 			price: price,
 			balance: balance,
