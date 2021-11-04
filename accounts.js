@@ -38,11 +38,11 @@ const getPrice = async (symbolID) => {
 	return data;
 };
 
-const getTotalBalance = async (addresses, symbolID, prevPrice) => {
+const getTotalBalance = async (addresses, symbolID, openPrice) => {
 	console.log('\n\n==================================');
 	const { price, contract, time } = await getPrice(symbolID);
 
-	const change = (price / prevPrice - 1) * 100;
+	const change = (price / openPrice - 1) * 100;
 	const balance = await getTokenBalance(addresses, contract);
 	console.log(
 		'TIME: ',
@@ -50,19 +50,22 @@ const getTotalBalance = async (addresses, symbolID, prevPrice) => {
 			' - ' +
 			new Date(time).toLocaleDateString()
 	);
-	console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
-	console.log('%s\x1b[37m\x1b[1m%s\x1b[0m', 'BALANCE: ', balance.toFixed(0));
+	console.log(' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
 	console.log(
-		'%s\x1b[37m\x1b[1m%s\x1b[0m',
-		'USD: ',
+		'| %s\x1b[37m\x1b[1m%s\x1b[0m | %s\x1b[37m\x1b[1m%s\x1b[0m  |',
+		'OPEN:  ',
+		openPrice.toFixed(6),
+		'BALANCE: ',
+		balance.toFixed(0),
+	);
+	console.log(
+		`| %s\x1b[${(change >= 0 && 32) || 31}m\x1b[1m%s\x1b[0m | %s\x1b[33m\x1b[1m$%s\x1b[0m |`,
+		'PRICE: ',
+		price.toFixed(6),
+		'USD:  ',
 		(price * balance).toFixed(2)
 	);
-	console.log(
-		`%s\x1b[${(change >= 0 && 32) || 31}m\x1b[1m%s\x1b[0m`,
-		'PRICE: ',
-		price
-	);
-	console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+	console.log(' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
 	console.log(
 		`%s\x1b[${(change >= 0 && 32) || 31}m\x1b[1m%s%\x1b[0m`,
 		`${change >= 0 ? '🚀 ' : '🚨 '}`,
@@ -76,27 +79,33 @@ const main = async () => {
 	const symbolID = 9385; //XBN
 	const ACCOUNT_DATA_FILE = './logs/accounts-data.txt';
 
-	let prevPrice, chunk;
+	let openPrice, count, chunk;
+
 	while (true) {
-		const { price, balance, time, change } = await getTotalBalance(
-			addresses,
-			symbolID,
-			prevPrice
-		);
+		openPrice = await getPrice(symbolID);
+		openPrice = openPrice.price;
+		count = (24 * 60) / 5; // 1 day to 5 mins count
+		while (count !== 0) {
+			const { price, balance, time, change } = await getTotalBalance(
+				addresses,
+				symbolID,
+				openPrice
+			);
 
-		if (prevPrice && Math.abs(change) >= 10) {
-			// Send email notification if change > 10%
-			notify(price, change);
+			if (openPrice && Math.abs(change) >= 10) {
+				// Send email notification if change > 10%
+				notify(price, change);
+			}
+
+			chunk = {
+				price: price,
+				balance: balance,
+				time: time
+			};
+			fs.appendFileSync(ACCOUNT_DATA_FILE, JSON.stringify(chunk));
+			count--;
+			await delay(5 * 60 * 1000);
 		}
-		prevPrice = price;
-
-		chunk = {
-			price: price,
-			balance: balance,
-			time: time
-		};
-		fs.appendFileSync(ACCOUNT_DATA_FILE, JSON.stringify(chunk));
-		await delay(5 * 60 * 1000);
 	}
 };
 
