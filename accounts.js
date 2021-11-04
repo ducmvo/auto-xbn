@@ -38,7 +38,7 @@ const getPrice = async (symbolID) => {
 	return data;
 };
 
-const getTotalBalance = async (addresses, symbolID, isUp) => {
+const getTotalBalance = async (addresses, symbolID, isUp, change) => {
 	console.log('\n\n==================================');
 	const { price, contract, time } = await getPrice(symbolID);
 	const balance = await getTokenBalance(addresses, contract);
@@ -48,19 +48,24 @@ const getTotalBalance = async (addresses, symbolID, isUp) => {
 			' - ' +
 			new Date(time).toLocaleDateString()
 	);
-
 	console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
 	console.log('%s\x1b[37m\x1b[1m%s\x1b[0m', 'BALANCE: ', balance.toFixed(0));
-	console.log(
-		`%s\x1b[${(isUp && 32) || 31}m\x1b[1m%s\x1b[0m`,
-		'PRICE: ',
-		price
-	);
 	console.log(
 		'%s\x1b[37m\x1b[1m%s\x1b[0m',
 		'USD: ',
 		(price * balance).toFixed(2)
-	);
+		);
+		console.log(
+			`%s\x1b[${(isUp && 32) || 31}m\x1b[1m%s\x1b[0m`,
+			'PRICE: ',
+			price
+		);
+		
+		change && console.log(
+			`%s\x1b[${(isUp && 32) || 31}m\x1b[1m%s%\x1b[0m`,
+			`${isUp?'🚀 UP:':'🚨 DOWN: '}`,
+			change.toFixed(2)
+		);
 	console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
 	return { price, balance, time };
 };
@@ -75,14 +80,16 @@ const main = async () => {
 		const { price, balance, time } = await getTotalBalance(
 			addresses,
 			symbolID,
-			isUp
+			isUp,
+			change
 		);
 		isUp = prevPrice && price >= prevPrice;
 		change = (100 * (price - prevPrice)) / prevPrice;
-		// if (prevPrice && Math.abs(change) >= 10) {
-		// 	notify(price, change);
-		// }
-		if (prevPrice) notify(price, change);
+		if (prevPrice && Math.abs(change) >= 10) {
+			// Send email notification if change > 10%
+			notify(price, change);
+		}
+
 		chunk = {
 			price: price,
 			balance: balance,
