@@ -113,7 +113,7 @@ export default async (
 			console.log(
 				'\x1b[1m\x1b[32m%s\x1b[0m',
 				`\n${parseFloat(
-					(isStake && nextReward) || getClaimable(nextReward) * 0.9
+					(isStake && nextReward * 0.9) || getClaimable(nextReward)
 				).toFixed(4)} TAXED REWARD CLAIMED!!\n`
 			);
 			console.log('TRANSACTION RECEIPT', {
