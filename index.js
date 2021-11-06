@@ -36,7 +36,7 @@ export default async (
 		nextDuration = Infinity;
 		balance = 0;
 		totalBalance = 0;
-		console.log('==================================\n');
+		console.log('\n==================================\n');
 		for (let wallet of wallets) {
 			privateKey = wallet.privateKey;
 			address = wallet.address;
@@ -165,8 +165,9 @@ export default async (
 				(isStake && nextReward) || getClaimable(nextReward)
 			);
 
-			countDown(nextDuration);
-			await timer.setTimeout(nextDuration + 10000);
+			const counter = countDown(nextDuration);
+			await timer.setTimeout(nextDuration);
+			clearInterval(counter);
 		}
 	}
 };

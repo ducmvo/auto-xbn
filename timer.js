@@ -28,6 +28,7 @@ const startTimer = (duration) => {
 		}
 	};
 	const counter = setInterval(timer, 1000);
+	return counter;
 };
 
 export default startTimer;
