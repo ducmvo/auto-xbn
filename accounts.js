@@ -1,9 +1,10 @@
-import web3 from 'web3';
+import Web3 from 'web3';
 import delay from 'delay';
 import fs from 'fs';
 import { cmc, bsc } from './axios.js';
 import { wallets } from './wallets.js';
 import notify from './notification.js';
+import { fetchABI } from './utils.js';
 
 const getURL = (address, contract) => {
 	const url =
@@ -20,7 +21,7 @@ const getTokenBalance = async (addresses, contract) => {
 	for (let address of addresses) {
 		const url = getURL(address, contract);
 		const data = await bsc.get(url);
-		const result = parseFloat(web3.utils.fromWei(data.result, 'ether'));
+		const result = parseFloat(Web3.utils.fromWei(data.result, 'ether'));
 		total += result;
 		console.log(address.substr(address.length - 4, address.length), result);
 	}
@@ -39,7 +40,7 @@ const getPrice = async (symbolID) => {
 };
 
 const getTotalBalance = async (addresses, symbolID, openPrice) => {
-	console.log('\n\n==================================');
+	console.log('==================================');
 	const { price, contract, time } = await getPrice(symbolID);
 
 	const change = (price / openPrice - 1) * 100;
@@ -56,10 +57,12 @@ const getTotalBalance = async (addresses, symbolID, openPrice) => {
 		'OPEN:  ',
 		openPrice.toFixed(6),
 		'BALANCE: ',
-		balance.toFixed(0),
+		balance.toFixed(0)
 	);
 	console.log(
-		`| %s\x1b[${(change >= 0 && 32) || 31}m\x1b[1m%s\x1b[0m | %s\x1b[33m\x1b[1m$%s\x1b[0m |`,
+		`| %s\x1b[${
+			(change >= 0 && 32) || 31
+		}m\x1b[1m%s\x1b[0m | %s\x1b[33m\x1b[1m$%s\x1b[0m |`,
 		'PRICE: ',
 		price.toFixed(6),
 		'USD:  ',
@@ -67,10 +70,12 @@ const getTotalBalance = async (addresses, symbolID, openPrice) => {
 	);
 	console.log(' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
 	console.log(
-		`%s\x1b[${(change >= 0 && 32) || 31}m\x1b[1m%s%\x1b[0m`,
+		`%s\x1b[${(change >= 0 && 32) || 31}m\x1b[1m%s% | %s \x1b[0m`,
 		`${change >= 0 ? '🚀 ' : '🚨 '}`,
-		change ? change.toFixed(2) : 0
+		change ? change.toFixed(2) : 0,
+		`${(price - openPrice).toFixed(6)}`
 	);
+
 	return { price, balance, time, change };
 };
 
@@ -78,14 +83,20 @@ const main = async () => {
 	const addresses = wallets.map((wallet) => wallet.address);
 	const symbolID = 9385; //XBN
 	const ACCOUNT_DATA_FILE = './logs/accounts-data.txt';
+	const ONEDAY = 24 * 60 * 60 * 1000;
 
 	let openPrice, count, chunk;
-
+	let currTime, nextTime;
 	while (true) {
 		openPrice = await getPrice(symbolID);
 		openPrice = openPrice.price;
-		count = (24 * 60) / 5; // 1 day to 5 mins count
-		while (count !== 0) {
+		count = 1;
+
+		currTime = new Date().getTime();
+		nextTime = currTime + ONEDAY;
+		while (currTime <= nextTime) {
+			currTime = new Date().getTime();
+			console.log('\nCHECK PRICE COUNT: ', count);
 			const { price, balance, time, change } = await getTotalBalance(
 				addresses,
 				symbolID,
@@ -103,10 +114,24 @@ const main = async () => {
 				time: time
 			};
 			fs.appendFileSync(ACCOUNT_DATA_FILE, JSON.stringify(chunk));
-			count--;
+			count++;
 			await delay(5 * 60 * 1000);
 		}
 	}
+};
+
+// Get Address Token Balance with Contract ABI
+export const getXBNBalance = async (address) => {
+	const ABI_FILE = 'logs/xbn-abi.txt';
+	const proxyAddress = process.env.XBN_PROXY_ADDRESS;
+	const contractAddress = process.env.XBN_CONTRACT_ADDRESS;
+	const web3 = new Web3(process.env.PROVIDER);
+	const contractABI = await fetchABI(proxyAddress, { ABI_FILE });
+	const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+	const balance = await contract.methods.balanceOf(address).call();
+
+	return web3.utils.fromWei(balance, 'ether');
 };
 
 main();
