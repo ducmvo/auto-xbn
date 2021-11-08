@@ -1,4 +1,4 @@
-import stakeReward from './index.js';
+import stakeReward from './claim.js';
 
 const proxyAddress = process.env.STAKING_PROXY_ADDRESS;
 const contractAddress = process.env.STAKING_CONTRACT_ADDRESS;

@@ -1,4 +1,4 @@
-import claimBonus from './index.js';
+import claimBonus from './claim.js';
 
 const proxyAddress = process.env.BONUS_PROXY_ADDRESS;
 const contractAddress = process.env.BONUS_CONTRACT_ADDRESS;
