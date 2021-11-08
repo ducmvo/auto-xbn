@@ -9,22 +9,7 @@ const transporter = nodemailer.createTransport({
 	}
 });
 
-const notify = (price, change) => {
-	const emoji = (change > 0 && '🚀 UP 🚀') || '🚨 DOWN 🚨';
-	const date = new Date();
-	const mailOptions = {
-		from: process.env.EMAIL,
-		to: process.env.EMAIL,
-		subject: `${emoji} ${change.toFixed(2)}% | PRICE ALERT | $${price.toFixed(5)}`,
-		html: `<p>
-        Time:&nbsp;${date.toLocaleTimeString()} - ${date.toLocaleDateString()}
-        <br />
-        Price:&nbsp;<span style="font-size:20px;color:${
-			change >= 0 ? 'green' : 'red'
-		};"><strong>${price}</strong></span>
-        </p>`
-	};
-
+const notify = (mailOptions) => {
 	transporter.sendMail(mailOptions, (error, info) => {
 		if (error) {
 			console.log(error);

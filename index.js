@@ -10,6 +10,7 @@ import {
 	getClaimable,
 	getBalance
 } from './utils.js';
+import notify from './notification.js';
 
 export default async (
 	contractAddress,
@@ -121,6 +122,13 @@ export default async (
 				status: receipt.status
 			});
 
+			sendMailNotification({
+				txnHash: `https://bscscan.com/tx/${receipt.transactionHash}`,
+				status: receipt.status,
+				reward:
+					(isStake && nextReward * 0.9) || getClaimable(nextReward)
+			});
+
 			if (!receipt.status) throw new Error('TRANSACTION FAILED!!');
 
 			console.log('\nPlease wait for updating...\n');
@@ -170,4 +178,25 @@ export default async (
 			clearInterval(counter);
 		}
 	}
+};
+
+const sendMailNotification = (data) => {
+	const { reward, txnHash, status } = data;
+	const emoji = (status > 0 && '💸  SUCCESS 💸 ') || '🚫 FAILED 🚫';
+	const date = new Date();
+	const mailOptions = {
+		from: process.env.EMAIL,
+		to: process.env.EMAIL,
+		subject: `${emoji} CLAIMED XBN REWARD | ${reward.toFixed(5)}`,
+		html: `<p>
+			Time: ${date.toLocaleTimeString()} - ${date.toLocaleDateString()}
+			<br />
+			Transaction Hash: <a href="${txnHash}" target="_blank">${txnHash}</a>
+			<br />
+			Status: <span style="color:${status ? 'green' : 'red'};"><strong>${
+			status ? 'SUCCESS' : 'FAILED'
+		}</strong></span>
+        </p>`
+	};
+	notify(mailOptions);
 };

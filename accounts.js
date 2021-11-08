@@ -105,7 +105,21 @@ const main = async () => {
 
 			if (openPrice && Math.abs(change) >= 10) {
 				// Send email notification if change > 10%
-				notify(price, change);
+				const emoji = (change > 0 && '🚀 UP 🚀') || '🚨 DOWN 🚨';
+				const date = new Date();
+				const mailOptions = {
+					from: process.env.EMAIL,
+					to: process.env.EMAIL,
+					subject: `${emoji} ${change.toFixed(2)}% | PRICE ALERT | $${price.toFixed(5)}`,
+					html: `<p>
+					Time:&nbsp;${date.toLocaleTimeString()} - ${date.toLocaleDateString()}
+					<br />
+					Price:&nbsp;<span style="font-size:20px;color:${
+						change >= 0 ? 'green' : 'red'
+					};"><strong>${price}</strong></span>
+					</p>`
+				};
+				notify(mailOptions);
 			}
 
 			chunk = {
